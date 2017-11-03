@@ -1,6 +1,6 @@
 
 # About the project
 
-*Write a short description about the course and add a link to your github repository here. This is an R markdown (.Rmd) file so you can use R markdown syntax. See the 'Useful links' page in the mooc area (chapter 1) for instructions.*
+This seems very interesting course, I am much excited day after day about its potentials and applications! 
 
-This seems very interesting course, I am much excited day after day about its potentials and applications! my GitHub repository is https://github.com/Abushahba/IODS-project.git 
+[link] https://github.com/Abushahba/IODS-project.git 
