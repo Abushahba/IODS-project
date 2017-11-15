@@ -1,7 +1,100 @@
-# Insert chapter 2 title here
+# Regression and model validation
 
-*Describe the work you have done this week and summarize your learning.*
+#I have learnt about Data management and wrangling as well as Regression model analysis examples
 
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using  
+#Reading students2014 data, Explore the structure and the dimensions of the data
+read.csv (file = "C:/Users/ahmed/Desktop/IODS-project/data/learning2014_AGA.csv")
+
+# let's make it in "lrn2014_AGA"
+lrn2014_AGA <- read.csv (file = "C:/Users/ahmed/Desktop/IODS-project/data/learning2014_AGA.csv")
+
+str(lrn2014_AGA)
+
+dim(lrn2014_AGA)
+
+#structure shows that we have data frame of 166 observations about 8 variables describing students' performance
+
+#now let's have a graphical overview of the data, can we access ggplot2 and GGally library?
+#NO! we need to install package first!
+
+install.packages("ggplot2")
+
+install.packages("GGally")
+
+library(ggplot2)
+
+library(GGally)
+
+?ggpairs
+
+plot <- ggpairs(lrn2014_AGA, mapping = aes(col = gender, alpha = 0.3), lower = list(combo = wrap("facethist", bins = 20)))
+
+plot
+
+# looking onto our plots we can have an idea about normality of distribution, different variables correlation
+# Our sample included more females almost double males
+# We can see for example that Age is more correlated with strategic thinking, then with Attitude and deep thinking almost similarily, while it is not correlated Points and superficial thinking.
+# The attitude is relatively highly correlated with the Points earned, however, it's also correlated to deep thinking more than with strategic thinking.
+# Deep thinking is somehow correlated with strategic thinking.
+# Strategic thinking has somthing to do with Points
+# Whereas superficial thinking is not correlated with Points.
+
+summary(lrn2014_AGA)
+
+# Now let's hypthesize a model to test how Attitude, deep and strategic thinking affect student's exam points
+
+fit <- lm(Points ~ Attitude + deep + stra, data = lrn2014_AGA) 
+summary(fit) 
+# Summary showing in the coefficients section that there is higher probability that deep thinking values are wrong, so it should be rejected from our model.
+
+
+# Now let's return back to our fit model and try to refine by backwards elimination
+fit <- lm(Points ~ Attitude + stra, data = lrn2014_AGA) 
+summary(fit)
+
+# I am still not convinced to keep strategic thinking, let's trim it!
+fit <- lm(Points ~ Attitude , data = lrn2014_AGA) 
+summary(fit)
+# According to this we can conclude that there is some statistical relationship between Student attitude and his exam points
+# what about the low R-squared? is it always bad? please see: http://blog.minitab.com/blog/adventures-in-statistics-2/regression-analysis-how-do-i-interpret-r-squared-and-assess-the-goodness-of-fit
+
+# let's have alook on the distribution and variability of the data around the regression line
+plot(fit)
+# So, the low R-squared graph shows that even noisy, high-variability data can have a significant trend.The trend indicates that the predictor variable still provides information about the response even though data points fall further from the regression line.
+
+# Now let's see some diagnostic plots
+
+plot(fit)
+plot(fit, which = c(1, 2, 5))
+
+# we assume that errors are normally distributed, right? well look at the QQ-plot
+# you will find that most of the points fit to the underlying line (more or less), so our assumption of normal distribution for the errors is ok!
+
+# next plot shows how the residuals are reasonably random spread around our model, which is good hopefully, as it tells that size of errors shold not depend on explanatory variables.
+
+# Final plot; residuals vs. leverage, showing that although we have some outliers but they are more or less equally distributed exerting regular leverage, that I feel that we don't need to worry about! 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
