@@ -7,6 +7,7 @@ output: html_document
 
 # IODS Course
 
-This is interesting
+This interesting course explores new horizons of *Data science*.
 
-[link] https://abushahba.github.io/IODS-project/
+My course diary can be found [here](https://abushahba.github.io/IODS-project/)
+
