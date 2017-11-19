@@ -1,6 +1,6 @@
 
-# About the project
+#  About the project\textcolor{red}
 
 This seems very interesting course, I am much excited day after day about its potentials and applications! 
 
-[link] https://github.com/Abushahba/IODS-project.git 
+My Github repository is [***here***](https://github.com/Abushahba/IODS-project.git)
