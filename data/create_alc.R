@@ -90,4 +90,3 @@ dim(ojc)
 
 write.csv(ojc, file = "C:/Users/ahmed/Desktop/IODS-project/data/joined data set for analysis.csv")
 
-
