@@ -1,0 +1,138 @@
+---
+title: "chapter3"
+author: "Abushahba"
+date: "November 22, 2017"
+output: html_document
+---
+
+# Logistic regression
+Here we will practice some priciples of **logistic regression** using the joined student alcohol consumption data, let's have a look on that
+```{r include=FALSE}
+library(dplyr)
+```
+
+
+```{r}
+analys3 <-read.csv("C:/Users/ahmed/Desktop/IODS-project/data/joined data set for analysis.csv")
+
+glimpse(analys3)
+
+```
+
+This data approach student achievement in secondary education of two Portuguese schools. The data (in the two sets) attributes include student grades, demographic, social and school related features and it was collected by using school reports and questionnaires, more details can be found [***here***](https://archive.ics.uci.edu/ml/datasets/Student+Performance), I have performed some data wrangling to Keep only the students present in both data sets, combine the 'duplicated' answers in the joined data, take the average of the answers related to weekday and weekend alcohol consumption and create a new logical column 'high_use' which is TRUE for students for which 'alc_use' is greater than 2 (and FALSE otherwise), and the Rscript for that can be found [***here***](https://github.com/Abushahba/IODS-project/blob/master/data/create_alc.R)
+
+
+## The purpose
+The purpose of analysis is to study the relationships between high/low alcohol consumption and some of the other variables in the data. To do this, we choose 4 interesting variables in the data; absences,quality of family relationship, sex (M) and free time after school. We hypthesize that those factors are correlated with higher alchol consumption.
+
+Let's have a look on that:
+
+```{r include=FALSE}
+library(ggplot2)
+```
+
+```{r}
+g1 <- ggplot(analys3, aes(x = high_use, y = absences, col = sex))
+
+g1 + geom_boxplot()
+
+g2 <- ggplot(analys3, aes(x = high_use, y = famrel, col = sex))
+
+g2 + geom_boxplot()
+
+g3 <- ggplot(analys3, aes(x = high_use, y = freetime, col = sex))
+
+g3 + geom_boxplot()
+
+
+```
+
+```{r}
+analys3 %>% group_by(sex, absences, famrel, high_use) %>% summarise(count = n(), mean_freetime = mean(freetime))
+```
+
+
+According to previous summaries; high_use is more related with higher absences espicially for males, weaker family relationship status equally for males and females and unlikely to be correlated with freetime espicially for males.
+
+## Fitting a model
+To statistically test this lets fit logistic regression to explore the relationship between our chosen variables and the binary high/low alcohol consumption variable as the target variable.
+
+```{r}
+m <- glm(high_use ~ absences + sex + famrel + freetime, data = analys3, family = "binomial")
+
+summary(m)
+
+```
+
+so, in the summary of our model we can taste the close correlation between absences, sex variables and higher use of alchol, and less correlation yet present between status of family relatoiship and freetime with higher alchol consumption.
+
+let's print out the coefficients of the model to use to obtain Odds ratio (OR) and then confidence intervals (CI)
+
+```{r}
+coef(m)
+
+OR <- coef(m) %>% exp()
+
+CI <- confint(m) %>% exp()
+
+cbind(OR, CI)
+
+```
+
+Based on that we can see that family relation status is less likely to correlate with higher alchol consumption (contradicting our initial hypothesis) as it shows less than 1 OR with a CI crossing line at 1, followed by absences, then with more likelihood of correlation follws freetime (again challenging our initial hypothesis) and SexM variables. So, I would conclude that higher alchol consumption is much correlated with SexM and freetime.
+
+## Exploring the predictive power of our model
+
+```{r}
+m <- glm(high_use ~ freetime + absences + sex, data = analys3, family = "binomial")
+
+probabilities <- predict(m, type = "response")
+
+analys3 <- mutate(analys3, probability = probabilities)
+
+analys3 <- mutate(analys3, prediction = (probability > 0.5))
+
+select(analys3, freetime, absences, sex, high_use, probability, prediction) %>% tail(10)
+
+table(high_use = analys3$high_use, prediction = analys3$prediction) %>% prop.table() %>% addmargins()
+
+g <- ggplot(analys3, aes(x = probability, y = high_use, col = prediction)) 
+
+g + geom_point()
+
+```
+
+It is evident that our prediction is not sensitive enough to predict higher alchol consumption; however, it was relatively specific in prdicting lower alchol consumers.
+
+Now, let's compute the total proportion of inaccurately classified individuals
+
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+loss_func(class = analys3$high_use, prob = analys3$probability)
+
+```
+so, in our model the mean of incorrectly classified observations is around 0.267
+
+## Cross validation
+Performing 10-fold cross-validation on our model, compute the average number of wrong predictions in the (training) data, compare to average number of wrong predictions in the cross validation
+
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+
+loss_func(class = analys3$high_use, prob = analys3$probability)
+
+
+library(boot)
+cv <- cv.glm(data = analys3, cost = loss_func, glmfit = m, K = 10)
+
+cv$delta[1]
+```
+prediction error higher on the testing data compared to the training data.
+
