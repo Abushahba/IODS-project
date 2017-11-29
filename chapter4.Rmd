@@ -1,0 +1,192 @@
+---
+title: "chapter4.Rmd"
+author: "Abushahba"
+date: "November 29, 2017"
+output: html_document
+---
+# Clustering and classification
+
+## Analysis exercises
+
+We will work on the Boston data from the MASS package which comprises Housing Values in Suburbs of Boston, let's load and explore it. 
+
+```{r}
+library(MASS)
+Ex4 <- Boston
+str(Ex4)
+```
+Our data frame(Boston) has 506 obseravations of 14 variables which are all numerical except for two integers (Charles River dummy variable (= 1 if tract bounds river; 0 otherwise and index of accessibility to radial highways).
+
+It is nice to have some graphical overview of the data as follows:
+
+```{r}
+summary(Ex4)
+library(ggplot2)
+library(GGally)
+plot1 <- ggpairs(Ex4,       
+  upper = list(continuous = wrap("cor", size = 3)), 
+  lower = list(continuous = wrap("points", alpha = .2, size = .6),
+               combo = wrap("facethist", bins = 10))) +
+  theme(
+    axis.text.x = element_text(angle = 90, color = "black", size = 7, vjust = .5),
+    axis.text.y = element_text(color = "black", size = 7))
+  
+  
+plot1
+
+```
+
+Can we have better visualization for the correlation? I think corrplot() function (from the corrplot package) could help, let's see!
+
+```{r}
+library(corrplot)
+library(tidyverse)
+
+cor_matrix<-cor(Ex4) %>% round(2)
+cor_matrix
+
+corrplot(cor_matrix, method="circle", type = "upper", cl.pos = "b", tl.pos = "d", tl.cex = 0.6)
+
+```
+So, now we can rather easily interpret or taste the correlation pattern between many variables. We can say for example that *crim* shows relatively more correlation with *rad* and *proportion of non-retail business acres per town* is highly correlated with *nitrogen oxides concentration (parts per 10 million)*. Same for correlation between *rad* and *tax* and the negative correlation between *age* and *dis*. However, the current data state is a bit diverse and unscaled that hinders true interpretations; which should be dealt with next.
+
+```{r}
+Ex4_scaled <- scale(Ex4)
+summary(Ex4_scaled)
+Ex4_scaled <- as.data.frame(Ex4_scaled)
+class(Ex4_scaled)
+```
+In the scaled data we can notice that all the means are set to 0.0000. Now, let's focus on the crime rate varable and try to categorize.
+
+```{r}
+summary(Ex4_scaled$crim)
+bins <- quantile(Ex4_scaled$crim)
+bins
+
+crime <- cut(Ex4_scaled$crim, breaks = bins, include.lowest = TRUE, label = c("low", "med_low", "med_high", "high"))
+
+table(crime)
+
+Ex4_scalednocrim <- dplyr::select(Ex4_scaled, -crim)
+
+Ex4_scaledw <- data.frame(Ex4_scalednocrim, crime)
+
+summary(Ex4_scaledw)
+
+boston_scaled <- Ex4_scaledw
+
+```
+
+Now, we need to divide the dataset to train and test sets, so that 80% of the data belongs to the train set.
+
+```{r}
+n <- nrow(boston_scaled)
+n
+
+# choose randomly 80% of the rows
+train_set <- sample(n,  size = n * 0.8)
+
+train <- boston_scaled[train_set,]
+ 
+test <- boston_scaled[-train_set,]
+
+
+```
+
+Now, let's fit the linear discriminant analysis on the train set. Use the categorical crime rate as the target variable and all the other variables in the dataset as predictor variables.
+
+```{r}
+lda.fit <- lda(crime ~ ., data = train)
+
+lda.fit
+
+str(train)
+
+# the function for lda biplot arrows
+lda.arrows <- function(x, myscale = 1, arrow_heads = 0.1, color = "red", tex = 0.75, choices = c(1,2)){
+  heads <- coef(x)
+  arrows(x0 = 0, y0 = 0, 
+         x1 = myscale * heads[,choices[1]], 
+         y1 = myscale * heads[,choices[2]], col=color, length = arrow_heads)
+  text(myscale * heads[,choices], labels = row.names(heads), 
+       cex = tex, col=color, pos=3)
+}
+
+# classes as numeric
+classes <- as.numeric(train$crime)
+
+# plot results
+plot(lda.fit, dimen = 2, col = classes, pch = classes)
+lda.arrows(lda.fit, myscale = 1)
+
+```
+
+Save the crime categories from the test set and then remove the categorical crime variable from the test dataset. Then predict the classes with the LDA model on the test data.
+```{r include=FALSE}
+# save the correct classes from test data to evaluate predictions
+correct_classes <- test$crime
+correct_classes
+summary(test)
+
+# remove the crime variable from test data
+test <- dplyr::select(test, -crime)
+
+lda.pred <- predict(lda.fit, newdata = test)
+lda.pred
+
+```
+cross tabulate the results
+```{r}
+table(correct = correct_classes, predicted = lda.pred$class) %>% addmargins()
+```
+
+
+
+Out of this eventual table we can say that if we use our model to predict low crime rate based on other variables we are 6X more likely to have correct prediction, 1.78X likely to predict med_low crime rate, almost around 13X likely to predict med_high and high crime rates. Thus it is relatively less reliable in detecting med_low crime rate.
+
+We will now reload the Boston dataset and standardize the dataset then calculate the distances between the observations.
+```{r}
+library(MASS)
+data('Boston')
+
+Boston_scaled <- scale(Boston) %>% as.data.frame()
+class(Boston_scaled)
+
+# euclidean distance matrix
+dist_eu <- dist(Boston_scaled)
+dist_eu
+# look at the summary of the distances
+
+summary(dist_eu)
+
+```
+
+then run k-means algorithm on the dataset and investigate what is the optimal number of clusters and run the algorithm again.
+
+```{r}
+km <-kmeans(Boston_scaled, centers = 3)
+
+
+# plot the dataset with clusters
+pairs(Boston_scaled[6:10], col = km$cluster)
+
+set.seed(123)
+
+# determine the number of clusters
+k_max <- 10
+
+# calculate the total within sum of squares
+twcss <- sapply(1:k_max, function(k){kmeans(Boston_scaled, k)$tot.withinss})
+
+# visualize the results
+qplot(x = 1:k_max, y = twcss, geom = 'line')
+
+# The optimal number of clusters is when the value of total WCSS changes radically. In this case, two clusters would seem optimal 
+
+km <-kmeans(Boston_scaled, centers = 2)
+
+pairs(Boston_scaled, col = km$cluster)
+
+
+```
+
