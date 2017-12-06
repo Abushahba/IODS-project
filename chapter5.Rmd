@@ -1,0 +1,115 @@
+---
+title: "chapter5"
+author: "Abushahba"
+date: "December 6, 2017"
+output: html_document
+---
+# Dimensionality reduction techniques
+In this part we will analyse a data set named *humanW*, it originates from the United Nations Development Programme. See [their data page](http://hdr.undp.org/en/content/human-development-index-hdi) for more information. For a nice overview see also [the calculating the human development indices pdf](http://hdr.undp.org/sites/default/files/hdr2015_technical_notes.pdf). Most of the variable names in the data have been shortened and two new variables have been computed. See the [meta file](https://raw.githubusercontent.com/TuomoNieminen/Helsinki-Open-Data-Science/master/datasets/human_meta.txt). For the modified data please check our renamed variables and [wrangled raw data](https://github.com/Abushahba/IODS-project/blob/master/data/human.csv), as well as R script for [data wrangling](https://github.com/Abushahba/IODS-project/blob/master/data/create_human.R).
+
+Now, let's have a look on our data set, the data now have 155 observations and 8 variables. 
+```{r}
+humanW <- read.csv(file =  "C:/Users/ahmed/Desktop/IODS-project/data/human.csv")
+row.names(humanW) <- humanW$X
+humanW <- humanW[-1]
+dim(humanW)
+```
+
+## Graphical overview of the data and summaries of the variables.
+```{r}
+library(ggplot2)
+library(GGally)
+library(dplyr)
+library(corrplot)
+p0 <- ggpairs(humanW)
+p0
+cor(humanW) %>% corrplot()
+```
+
+
+From the correlation matrix we can assume for example *Proportion of females with at least secondary education* is positively correlated with *Life expectancy at birth* and *Expected years of schooling*, whereas, it is negatively correlated with *Maternal mortality ratio* and *Adolescent birth rate*. We can see also *Percetange of female representatives in parliament* is very mildly correlated with *Expected years of schooling*. Most of the variables are normally destributed except for *Maternal mortality ratio* and *Adolescent birth rate*.
+
+## Principal component analysis (PCA) on the *not standardized* human data
+```{r}
+pca_humanW1 <- prcomp(humanW)
+
+# draw a biplot of the principal component representation and the original variables
+biplot(pca_humanW1, choices = 1:2, cex = c(0.8, 1), col = c("grey40", "deeppink2"))
+
+```
+
+## Principal component analysis (PCA) on the *standardized* human data
+```{r}
+# standardize the variables
+humanW_std <- scale(humanW)
+humanW_std
+# summaries of the standardized variables showing means equal to zero
+summary(humanW_std)
+```
+
+Now, let's perform PCA for the *standerdized* data
+
+```{r}
+#perform principal component analysis (with the SVD method)
+pca_humanW2 <- prcomp(humanW_std)
+
+# draw a biplot of the principal component representation and the original variables
+biplot(pca_humanW2, choices = 1:2, cex = c(0.8, 1), col = c("grey55", "deeppink4"))
+```
+
+
+from the previous plots we can see that *Maternal mortality ratio* and *Adolescent birth rate* are contributing most to the PC1 with strong positive correlation with each other; meanwhile, they are quite negatively correlated to *Expected years of schooling*, *Life expectancy at birth* and *Proportion of females with at least secondary education*. However, all previous variables are very weakly correlated to * Proportion of females in the labour force* and *Percetange of female representatives in parliament* which are (the later) contributing more to the PC2. Such interpretation goes well with the former correlation matrix and is not feasible in the first biplot without standerdizing the variables for comparison.
+
+## Analysing the first two principal component dimensions of the biplot 
+
+```{r}
+s <- summary(pca_humanW2)
+
+# rounded percetanges of variance captured by each PC
+pca_pr <- round(100*s$importance[2, ], digits = 1)
+
+# print out the percentages of variance
+pca_pr
+
+# create object pc_lab to be used as axis labels
+paste0(names(pca_pr), " (", pca_pr, "%)")
+pc_lab <- paste0(names(pca_pr), " (", pca_pr, "%)")
+pc_lab
+# draw a biplot
+biplot(pca_humanW2, cex = c(0.8, 1), col = c("grey60", "deeppink2"), xlab = pc_lab[1], ylab = pc_lab[2])
+```
+
+
+Here we can see that most of the variation is accounted for by the first two principal components which indicates validity of analysis. As we referred earlier *Maternal mortality ratio* and *Adolescent birth rate* are the most important variables which are found to be highly predicting less educational oppurtunities and shorter life span of related subjects. However, * Proportion of females in the labour force* and *Percetange of female representatives in parliament* seem to be related to other players which are not among our study variables.
+
+## The tea dataset
+
+```{r}
+library(FactoMineR)
+library(tidyr)
+data(tea)
+str(tea)
+dim(tea)
+
+keep_ <- c("How", "how", "sugar", "where", "lunch", "healthy", "diuretic")
+teaW <- dplyr::select(tea, one_of(keep_))
+
+gather(teaW) %>% ggplot(aes(value)) + facet_wrap("key", scales = "free") + geom_bar() + theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8))
+
+
+```
+
+then, let's do Multiple Correspondence Analysis on the tea data 
+```{r}
+# multiple correspondence analysis
+mca <- MCA(teaW, graph = FALSE)
+
+# summary of the model
+summary(mca)
+
+# visualize MCA
+plot(mca, invisible=c("ind"),habillage = "quali" )
+```
+
+
+here for example we can see that drinking unpackaged tea is more similar to drinking tea in tea shops, as well as, drinking tea in both chain stores and tea shops is more related to drinking both bagged and unpackaged tea category.
